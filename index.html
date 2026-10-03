@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 檔案：seating_doubletree.html｜版本：2026-10-03 -->
+<!-- 檔案：seating_doubletree.html｜版本：2026-10-04 -->
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
@@ -63,6 +63,8 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
 .seat.kid{background:#FCE8CF;color:#9a4e10;border-color:#c08040}
 .seat.help{background:#E8E0F5;color:#5a2d8a;border-color:#9a70cc}
 .seat::placeholder{color:#bbb}
+.seat.main-s{box-shadow:inset 6px 0 0 #9D380E}
+.seat.main-p{box-shadow:inset 6px 0 0 #6BA1C7}
 
 .mask{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:100;padding:14px}
 .mask.show{display:flex}
@@ -108,14 +110,16 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
   <label><input type="radio" name="ep" value="yes"> 擺</label>
   <label><input type="radio" name="ep" value="no" checked> 不擺</label>
 </div>
-<div class="stat">座位 <b id="sCap">0</b> 位（含新人 2 位）　已排 <b id="sSeated">0</b>　空 <b id="sEmpty">0</b>　素 <b id="sVeg">0</b>　兒童椅 <b id="sKid">0</b>　協助送餐 <b id="sHelp">0</b></div>
+<div class="stat">座位 <b id="sCap">0</b> 位（含新人 2 位）　已排 <b id="sSeated">0</b>　空 <b id="sEmpty">0</b>　素 <b id="sVeg">0</b>　兒童椅 <b id="sKid">0</b>　協助送餐 <b id="sHelp">0</b><span id="sMainWrap" style="display:none">　<span class="mA">主餐A</span> <b id="sSteak">0</b>　<span class="mB">主餐B</span> <b id="sPork">0</b></span></div>
 <div class="warn" id="warn"></div>
-<div class="hint">📝 點座位格直接輸入姓名 · <b>右鍵（手機長按）</b>標記素食🌿／兒童椅🪑／協助送餐🍽️ · 點<b>桌名</b>可修改 · 全自助無位上主餐，不需 Name Card</div>
+<div class="hint">📝 點座位格直接輸入姓名 · <b>右鍵（手機長按）</b>標記素食🌿／兒童椅🪑／協助送餐🍽️ · 點<b>桌名</b>可修改</div>
 <div class="legend">
   <div class="leg"><div class="leg-box" style="background:#E8E2D9;border-color:#999"></div>已填</div>
   <div class="leg"><div class="leg-box" style="background:#D4EDCC;border-color:#5a9a4a"></div>素食</div>
   <div class="leg"><div class="leg-box" style="background:#FCE8CF;border-color:#c08040"></div>兒童椅</div>
   <div class="leg"><div class="leg-box" style="background:#E8E0F5;border-color:#9a70cc"></div>協助送餐</div>
+  <div class="leg semi-only" style="display:none"><div class="leg-box" style="box-shadow:inset 6px 0 0 #9D380E"></div>主餐：<span class="mA">主餐A</span></div>
+  <div class="leg semi-only" style="display:none"><div class="leg-box" style="box-shadow:inset 6px 0 0 #6BA1C7"></div>主餐：<span class="mB">主餐B</span></div>
 </div>
 
 <div class="wrap"><div class="room" id="room"></div></div>
@@ -134,10 +138,11 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
   var TOKEN = m ? decodeURIComponent(m[1]) : null;
   var FORM = {};
   var LAYOUT_LOCKED = false;
+  var SEMI = false, MA = '主餐A', MB = '主餐B';
   var LAYOUT_NAME = { '58':'58 位配置（四張長桌）', '36c':'36 位以下配置・背板在中央', '36e':'36 位以下配置・背板在入口處' };
 
   // 桌位：左側方桌 90×80 ×8 併 720×80（上8下8，36位版右端加1端座）；右側 IBM 180×45 ×4 併 360×90（上6下6）
-  function mk(n){ var a=[]; for(var i=0;i<n;i++) a.push({name:'',veg:false,kid:false,help:false}); return a; }
+  function mk(n){ var a=[]; for(var i=0;i<n;i++) a.push({name:'',veg:false,kid:false,help:false,main:''}); return a; }
   var state = {
     layout: '58',
     tables: {
@@ -151,7 +156,7 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
 
   function $(id){ return document.getElementById(id); }
   function esc(s){ return String(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-  function cls(s){ return 'seat'+(!s.name ? '' : s.veg?' veg':s.kid?' kid':s.help?' help':' filled'); }
+  function cls(s){ return 'seat'+(!s.name ? '' : s.veg?' veg':s.kid?' kid':s.help?' help':' filled')+(s.name&&SEMI&&s.main==='S'?' main-s':s.name&&SEMI&&s.main==='P'?' main-p':''); }
   function is36(){ return state.layout !== '58'; }
   function visible(key){ return key==='M'||key==='L1'||key==='L2'||!is36(); }
   function seatCountOf(key){ var t=state.tables[key]; if(key==='L1'||key==='L2') return is36()?17:16; return t.seats.length; }
@@ -199,18 +204,20 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
 
   // ── 統計與核對確認單 ──
   function updateStat(){
-    var cap=0, seated=0, veg=0, kid=0, help=0, hidden=0;
+    var cap=0, seated=0, veg=0, kid=0, help=0, hidden=0, steak=0, pork=0, noMain=0;
     Object.keys(state.tables).forEach(function(k){
       var t = state.tables[k], n = seatCountOf(k);
       t.seats.forEach(function(s,i){
         var on = visible(k) && i<n;
         if (!on) { if (s.name) hidden++; return; }
         cap++;
-        if (s.name){ seated++; if(s.veg)veg++; if(s.kid)kid++; if(s.help)help++; }
+        if (s.name){ seated++; if(s.veg)veg++; if(s.kid)kid++; if(s.help)help++; if(SEMI){ if(s.main==='S')steak++; else if(s.main==='P')pork++; else if(!s.veg&&!s.kid&&k!=='M')noMain++; } }
       });
     });
     $('sCap').textContent=cap; $('sSeated').textContent=seated; $('sEmpty').textContent=cap-seated;
     $('sVeg').textContent=veg; $('sKid').textContent=kid; $('sHelp').textContent=help;
+    $('sMainWrap').style.display=SEMI?'':'none'; $('sSteak').textContent=steak; $('sPork').textContent=pork;
+    document.querySelectorAll('.semi-only').forEach(function(e){ e.style.display=SEMI?'':'none'; });
     var w = [];
     var n = function(v){ return parseInt(v)||0; };
     var formSeats = n(FORM.paxAdultAll)+n(FORM.paxKid612)+n(FORM.paxKidU6);
@@ -219,6 +226,8 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
     var formVeg = n(FORM.paxVegPure)+n(FORM.paxVegOvo);
     if (seated && formVeg!==veg && (formVeg||veg)) w.push('確認單素食 '+formVeg+' 位，座位表標記 '+veg+' 位');
     if (seated && n(FORM.kidsChair)!==kid && (n(FORM.kidsChair)||kid)) w.push('確認單兒童椅 '+n(FORM.kidsChair)+' 張，座位表標記 '+kid+' 張');
+    if (SEMI && seated && (n(FORM.mainA)!==steak || n(FORM.mainB)!==pork)) w.push('確認單主餐 '+MA+' '+n(FORM.mainA)+'／'+MB+' '+n(FORM.mainB)+'，座位表標記 '+MA+' '+steak+'／'+MB+' '+pork);
+    if (SEMI && noMain) w.push(noMain+' 位賓客尚未標記主餐');
     if (hidden) w.push('有 '+hidden+' 位姓名在目前配置未顯示（切換配置前的端座或右側桌）');
     $('warn').textContent = w.length ? '⚠️ '+w.join('；') : '';
   }
@@ -232,7 +241,7 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
     var el=e.target; if(!el.dataset||el.dataset.k===undefined||composing) return;
     var s=state.tables[el.dataset.k].seats[+el.dataset.i];
     s.name=el.value.trim(); el.value=s.name;
-    if(!s.name){s.veg=s.kid=s.help=false;}
+    if(!s.name){s.veg=s.kid=s.help=false;s.main='';}
     el.className=cls(s); updateStat(); scheduleSave();
   });
   room.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!composing&&e.target.dataset.k!==undefined) e.target.blur(); });
@@ -264,10 +273,14 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
       b.onclick=function(){ fn(); menu.remove(); el.value=s.name; el.className=cls(s); updateStat(); scheduleSave(); };
       menu.appendChild(b);
     }
-    item('素食 🌿',s.veg,function(){ s.veg=!s.veg; if(s.veg){s.kid=false;} });
+    if(SEMI){
+      item('主餐：'+MA,s.main==='S',function(){ s.main=s.main==='S'?'':'S'; if(s.main) s.veg=false; });
+      item('主餐：'+MB,s.main==='P',function(){ s.main=s.main==='P'?'':'P'; if(s.main) s.veg=false; });
+    }
+    item('素食 🌿',s.veg,function(){ s.veg=!s.veg; if(s.veg){s.kid=false;s.main='';} });
     item('兒童椅 🪑',s.kid,function(){ s.kid=!s.kid; if(s.kid){s.veg=false;} });
     item('協助送餐 🍽️',s.help,function(){ s.help=!s.help; });
-    item('清除此座位',false,function(){ s.name='';s.veg=s.kid=s.help=false; },'#c0392b');
+    item('清除此座位',false,function(){ s.name='';s.veg=s.kid=s.help=false;s.main=''; },'#c0392b');
     document.body.appendChild(menu);
     setTimeout(function(){ document.addEventListener('click',function h(ev){ if(!menu.contains(ev.target)){ menu.remove(); document.removeEventListener('click',h);} }); },10);
   }
@@ -287,7 +300,7 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
   };
   $('clearBtn').onclick=function(){
     if(!confirm('清除所有座位姓名及標記？')) return;
-    Object.keys(state.tables).forEach(function(k){ state.tables[k].seats.forEach(function(s){ s.name='';s.veg=s.kid=s.help=false; }); });
+    Object.keys(state.tables).forEach(function(k){ state.tables[k].seats.forEach(function(s){ s.name='';s.veg=s.kid=s.help=false;s.main=''; }); });
     render(); scheduleSave();
   };
   $('printBtn').onclick=function(){
@@ -323,7 +336,7 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
     Object.keys(state.tables).forEach(function(k){
       var st=saved.tables[k]; if(!st) return;
       if(st.label) state.tables[k].label=st.label;
-      (st.seats||[]).forEach(function(s,i){ if(state.tables[k].seats[i]) state.tables[k].seats[i]={name:s.name||'',veg:!!s.veg,kid:!!s.kid,help:!!s.help}; });
+      (st.seats||[]).forEach(function(s,i){ if(state.tables[k].seats[i]) state.tables[k].seats[i]={name:s.name||'',veg:!!s.veg,kid:!!s.kid,help:!!s.help,main:s.main||''}; });
     });
   }
 
@@ -340,6 +353,10 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
         }
         mergeSaved(d && d.seat);
         FORM=(d && d.form)||{};
+        SEMI = FORM.menuType==='半自助';
+        MA = FORM.mainAShort || '主餐A'; MB = FORM.mainBShort || '主餐B';
+        document.querySelectorAll('.mA').forEach(function(e){ e.textContent=MA; });
+        document.querySelectorAll('.mB').forEach(function(e){ e.textContent=MB; });
         var fl=layoutFromForm(FORM);
         if(fl){ state.layout=fl; LAYOUT_LOCKED=true; $('layoutSel').disabled=true; $('layoutSel').title='依確認單決定'; }
         render();
