@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<!-- 檔案：seating_doubletree.html｜版本：2026-10-03 -->
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>希爾頓逸林 座位表</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;background:#F0EDE8;color:#1a1a1a;padding:10px;font-size:12px}
+.btn{background:#1a1a1a;color:#fff;border:none;padding:7px 11px;border-radius:5px;font-size:11px;cursor:pointer}
+.btn.ghost{background:#fff;color:#1a1a1a;border:1px solid #bbb}
+.toolbar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.toolbar select{padding:6px 8px;border:1px solid #bbb;border-radius:5px;font-size:12px;background:#fff}
+.stat{text-align:center;font-size:11px;color:#666;margin-bottom:4px}.stat b{color:#1a1a1a}
+.warn{text-align:center;font-size:11px;color:#a33;margin-bottom:6px;min-height:14px}
+.hint{text-align:center;font-size:11px;color:#666;margin:0 auto 6px;background:#fff8e8;border:1px solid #e8d88a;border-radius:6px;padding:6px 12px;max-width:1100px}
+.legend{display:flex;gap:12px;justify-content:center;margin-bottom:8px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:4px;font-size:10px;color:#555}
+.leg-box{width:12px;height:12px;border-radius:2px;border:1px solid #ccc}
+.save-status{text-align:center;font-size:10px;color:#aaa;min-height:16px;margin-bottom:4px}
+.save-status.saving{color:#f0a500}.save-status.saved{color:#5A8A52}.save-status.error{color:#c0392b}
+
+.wrap{max-width:1150px;margin:0 auto;background:#fff;border-radius:10px;padding:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);overflow-x:auto}
+.room{min-width:960px;border:2px solid #1a1a1a;border-radius:6px;padding:8px;position:relative}
+.topbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.blk{border-radius:14px;padding:4px 12px;font-size:10px;font-weight:700;letter-spacing:1px;text-align:center;white-space:nowrap}
+.food{background:#E8A090;color:#7a2010;border:1px solid #d07060}
+.screen{border-bottom:3px solid #1a1a1a;padding:2px 14px;font-size:10px;color:#555;letter-spacing:2px}
+.av{background:#F5C87A;color:#6a4a10;border:1px solid #d0a050;border-radius:4px;padding:3px 8px;font-size:10px}
+.floor{display:grid;grid-template-columns:62px minmax(400px,1.6fr) 150px minmax(280px,1fr) 46px;gap:10px;align-items:stretch}
+.vlabel{writing-mode:vertical-rl;letter-spacing:4px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.store{background:#ddd;border:1px solid #aaa;color:#555;border-radius:4px}
+.col{display:flex;flex-direction:column;justify-content:center;gap:18px}
+.center{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.hot{width:110px;height:90px;border-radius:18px;background:#E8A090;border:1px solid #d07060;color:#7a2010;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:13px;letter-spacing:2px}
+.backdrop{background:#E9C46A;color:#5a4300;border:1px solid #c9a23a;font-weight:700;font-size:11px;letter-spacing:2px;text-align:center;border-radius:3px}
+.photo{border:2px solid #E9C46A;border-radius:10px;display:flex;align-items:stretch;gap:8px;padding:10px;min-height:200px}
+.photo .area{flex:1;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;letter-spacing:4px;color:#8a6d1a;font-weight:700}
+.photo .backdrop{writing-mode:vertical-rl;padding:8px 4px}
+.bottombar{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;margin-top:12px;gap:10px}
+.entry{font-size:10px;color:#999;letter-spacing:3px;text-align:center}
+
+/* 新人桌 */
+.mtable{display:flex;align-items:center;gap:4px}
+.mtable .mseats{display:flex;flex-direction:column;gap:4px}
+.mtable .mseats .seat{width:44px;font-size:10px;padding:6px 2px;text-align:center}
+.mtable .mbar{writing-mode:vertical-rl;background:#B8944A;color:#fff;font-weight:700;letter-spacing:3px;padding:8px 3px;border-radius:3px;cursor:pointer;font-size:11px}
+
+/* 長桌 */
+.lt{display:flex;align-items:center;gap:3px}
+.lt .body{flex:1;min-width:0;border:1.5px solid #9D380E;border-radius:6px;background:#FBF3EE;overflow:hidden}
+.lt .row{display:grid;gap:2px;padding:3px}
+.lt .bar{background:#E07A6A;color:#fff;font-weight:700;font-size:10px;letter-spacing:2px;text-align:center;padding:4px;cursor:pointer}
+.lt .bar:hover{background:#c9604f}
+.lt .end{width:46px}
+.lt .end .seat{text-align:center}
+
+.seat{font-size:9px;background:#F0F0F0;border-radius:3px;padding:4px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid transparent;outline:none;min-height:22px;width:100%;font-family:inherit;-webkit-appearance:none;appearance:none}
+.seat:focus{background:#fff;border-color:#6BA1C7;box-shadow:0 0 0 2px rgba(107,161,199,.25)}
+.seat.filled{background:#E8E2D9;border-color:#ccc}
+.seat.veg{background:#D4EDCC;color:#2d6a21;border-color:#5a9a4a}
+.seat.kid{background:#FCE8CF;color:#9a4e10;border-color:#c08040}
+.seat.help{background:#E8E0F5;color:#5a2d8a;border-color:#9a70cc}
+.seat::placeholder{color:#bbb}
+
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:100;padding:14px}
+.mask.show{display:flex}
+.sheet{background:#fff;width:100%;max-width:340px;border-radius:14px;padding:18px}
+.sheet h3{font-size:15px;margin-bottom:10px;text-align:center}
+.sheet input{width:100%;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:14px;font-weight:700}
+.sheet-footer{display:flex;gap:8px;margin-top:14px}.sheet-footer .btn{flex:1}
+#tagMenu button{border:1px solid #ddd;border-radius:5px;padding:6px 10px;cursor:pointer;text-align:left;background:#fff;font-size:12px}
+
+@media print{
+  @page{size:A4 landscape;margin:5mm}
+  html,body{background:#fff;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .toolbar,.stat,.warn,.hint,.legend,.save-status,.mask,.noprint{display:none!important}
+  #print-wrapper{zoom:.72}
+  .wrap{box-shadow:none;padding:0;max-width:none;overflow:visible}
+  .seat{border-color:#ccc}
+  body:not(.place-empty) .seat:placeholder-shown{color:transparent}
+  body:not(.place-empty) .seat::placeholder{color:transparent}
+  body.place-empty .seat:placeholder-shown{background:#fff}
+}
+</style>
+</head>
+<body>
+<div id="print-wrapper">
+<div style="text-align:center;margin-bottom:6px;border-bottom:2px solid #1a1a1a;padding-bottom:6px">
+  <div style="font-size:11px;color:#888;letter-spacing:2px;margin-bottom:4px">台北中山九昱希爾頓逸林酒店 麗餐廳 × 想樂創意　婚 宴 座 位 表</div>
+  <div id="hdDate" style="font-size:22px;font-weight:800;line-height:1.3"></div>
+  <div id="hdNames" style="font-size:22px;font-weight:800;line-height:1.3"></div>
+  <div id="hdLayout" style="font-size:12px;color:#666;margin-top:2px"></div>
+</div>
+<div class="save-status" id="saveStatus"></div>
+<div class="toolbar">
+  <span>場地配置：</span>
+  <select id="layoutSel">
+    <option value="58">58 位（四張長桌）</option>
+    <option value="36c">36 位以下・背板在中央</option>
+    <option value="36e">36 位以下・背板在入口處</option>
+  </select>
+  <button class="btn ghost" id="clearBtn">清除姓名</button>
+  <button class="btn" id="printBtn">列印 / PDF</button>
+</div>
+<div class="toolbar" style="font-size:13px">空位是否擺放餐具：
+  <label><input type="radio" name="ep" value="yes"> 擺</label>
+  <label><input type="radio" name="ep" value="no" checked> 不擺</label>
+</div>
+<div class="stat">座位 <b id="sCap">0</b> 位（含新人 2 位）　已排 <b id="sSeated">0</b>　空 <b id="sEmpty">0</b>　素 <b id="sVeg">0</b>　兒童椅 <b id="sKid">0</b>　協助送餐 <b id="sHelp">0</b></div>
+<div class="warn" id="warn"></div>
+<div class="hint">📝 點座位格直接輸入姓名 · <b>右鍵（手機長按）</b>標記素食🌿／兒童椅🪑／協助送餐🍽️ · 點<b>桌名</b>可修改 · 全自助無位上主餐，不需 Name Card</div>
+<div class="legend">
+  <div class="leg"><div class="leg-box" style="background:#E8E2D9;border-color:#999"></div>已填</div>
+  <div class="leg"><div class="leg-box" style="background:#D4EDCC;border-color:#5a9a4a"></div>素食</div>
+  <div class="leg"><div class="leg-box" style="background:#FCE8CF;border-color:#c08040"></div>兒童椅</div>
+  <div class="leg"><div class="leg-box" style="background:#E8E0F5;border-color:#9a70cc"></div>協助送餐</div>
+</div>
+
+<div class="wrap"><div class="room" id="room"></div></div>
+</div>
+
+<div class="mask" id="mask"><div class="sheet">
+  <h3>修改桌名</h3>
+  <input type="text" id="nameInput">
+  <div class="sheet-footer"><button class="btn ghost" id="cancelBtn">取消</button><button class="btn" id="okBtn">儲存</button></div>
+</div></div>
+
+<script>
+(function(){
+  var BASE_URL = 'https://script.google.com/macros/s/AKfycbwV3pXKiwOBCbvv_W0ysv1_mjGsAnK4VqKQI5-jAbjDWGgEaBpVJufiszaVhYsc73Lg/exec';
+  var m = location.search.match(/[?&]token=([^&]+)/);
+  var TOKEN = m ? decodeURIComponent(m[1]) : null;
+  var FORM = {};
+  var LAYOUT_LOCKED = false;
+  var LAYOUT_NAME = { '58':'58 位配置（四張長桌）', '36c':'36 位以下配置・背板在中央', '36e':'36 位以下配置・背板在入口處' };
+
+  // 桌位：左側方桌 90×80 ×8 併 720×80（上8下8，36位版右端加1端座）；右側 IBM 180×45 ×4 併 360×90（上6下6）
+  function mk(n){ var a=[]; for(var i=0;i<n;i++) a.push({name:'',veg:false,kid:false,help:false}); return a; }
+  var state = {
+    layout: '58',
+    tables: {
+      M:  { label:'新人桌', seats: mk(2) },
+      L1: { label:'1桌', seats: mk(17) },
+      L2: { label:'2桌', seats: mk(17) },
+      R1: { label:'3桌', seats: mk(12) },
+      R2: { label:'4桌', seats: mk(12) }
+    }
+  };
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function cls(s){ return 'seat'+(!s.name ? '' : s.veg?' veg':s.kid?' kid':s.help?' help':' filled'); }
+  function is36(){ return state.layout !== '58'; }
+  function visible(key){ return key==='M'||key==='L1'||key==='L2'||!is36(); }
+  function seatCountOf(key){ var t=state.tables[key]; if(key==='L1'||key==='L2') return is36()?17:16; return t.seats.length; }
+
+  // ── 渲染 ──
+  function seatHtml(key, i, ph){
+    var s = state.tables[key].seats[i];
+    return '<input class="'+cls(s)+'" data-k="'+key+'" data-i="'+i+'" value="'+esc(s.name)+'" placeholder="'+ph+'">';
+  }
+  function longTable(key, perSide, withEnd){
+    var t = state.tables[key], top='', bot='';
+    for (var i=0;i<perSide;i++){ top+=seatHtml(key,i,String(i+1)); bot+=seatHtml(key,perSide+i,String(perSide+i+1)); }
+    var cols = 'grid-template-columns:repeat('+perSide+',1fr)';
+    return '<div class="lt"><div class="body"><div class="row" style="'+cols+'">'+top+'</div>'+
+      '<div class="bar" data-label="'+key+'">'+esc(t.label)+'</div>'+
+      '<div class="row" style="'+cols+'">'+bot+'</div></div>'+
+      (withEnd ? '<div class="end">'+seatHtml(key,16,'端')+'</div>' : '')+'</div>';
+  }
+  function render(){
+    var L = state.layout, h = '';
+    // 上方
+    h += '<div class="topbar"><span class="av">音控台</span><span class="screen">投 影 布 幕</span><span style="flex:1"></span>';
+    h += L==='36e' ? '<span class="blk food">甜點餐檯</span><span class="blk food">冷菜餐檯＋切肉台</span>'
+                   : '<span class="blk food">冷菜餐檯</span><span class="blk food">冷菜餐檯＋切肉台</span>';
+    h += '<span style="flex:1"></span>'+(L==='58'?'':'<span style="font-size:10px;color:#999">風琴屏風</span>')+'</div>';
+    // 主區
+    h += '<div class="floor">';
+    h += '<div class="mtable"><div class="mseats">'+seatHtml('M',0,'新郎')+seatHtml('M',1,'新娘')+'</div><div class="mbar" data-label="M">'+esc(state.tables.M.label)+'</div></div>';
+    h += '<div class="col">'+longTable('L1',8,is36())+longTable('L2',8,is36())+'</div>';
+    h += '<div class="center"><div class="hot">熱菜餐檯</div>'+(L==='36e'?'':'<span class="blk food">甜點餐檯</span>')+'</div>';
+    if (L==='58') h += '<div class="col">'+longTable('R1',6,false)+longTable('R2',6,false)+'</div>';
+    else if (L==='36c') h += '<div class="col"><div class="photo"><div class="area">親友拍照區</div><div class="backdrop">新人拍照背板</div></div></div>';
+    else h += '<div class="col" style="align-items:flex-end"><span class="blk food" style="writing-mode:vertical-rl;padding:10px 4px">冷菜餐檯</span></div>';
+    h += '<div class="vlabel store">餐廳與工作人員儲物區</div></div>';
+    // 下方
+    h += '<div class="bottombar"><div style="display:flex;gap:8px;align-items:center"><span class="av" style="background:#eee;border-color:#bbb;color:#555">洗手間</span>'+
+         (L==='36e' ? '<span class="backdrop" style="padding:4px 18px">新人拍照背板</span>' : '')+'<span class="blk food" style="border-radius:3px">接待桌</span></div>'+
+         '<div class="entry">▲ 入 口 ／ 電 梯</div>'+
+         '<div style="text-align:right"><span class="blk food">飲品餐檯</span></div></div>';
+    $('room').innerHTML = h;
+    $('layoutSel').value = L;
+    $('hdLayout').textContent = LAYOUT_NAME[L];
+    updateStat();
+  }
+
+  // ── 統計與核對確認單 ──
+  function updateStat(){
+    var cap=0, seated=0, veg=0, kid=0, help=0, hidden=0;
+    Object.keys(state.tables).forEach(function(k){
+      var t = state.tables[k], n = seatCountOf(k);
+      t.seats.forEach(function(s,i){
+        var on = visible(k) && i<n;
+        if (!on) { if (s.name) hidden++; return; }
+        cap++;
+        if (s.name){ seated++; if(s.veg)veg++; if(s.kid)kid++; if(s.help)help++; }
+      });
+    });
+    $('sCap').textContent=cap; $('sSeated').textContent=seated; $('sEmpty').textContent=cap-seated;
+    $('sVeg').textContent=veg; $('sKid').textContent=kid; $('sHelp').textContent=help;
+    var w = [];
+    var n = function(v){ return parseInt(v)||0; };
+    var formSeats = n(FORM.paxAdultAll)+n(FORM.paxKid612)+n(FORM.paxKidU6);
+    if (formSeats && seated && seated!==formSeats) w.push('確認單座位 '+formSeats+' 位，目前已排 '+seated+' 位');
+    if (formSeats > cap) w.push('確認單座位 '+formSeats+' 位超過此配置上限 '+cap+' 位');
+    var formVeg = n(FORM.paxVegPure)+n(FORM.paxVegOvo);
+    if (seated && formVeg!==veg && (formVeg||veg)) w.push('確認單素食 '+formVeg+' 位，座位表標記 '+veg+' 位');
+    if (seated && n(FORM.kidsChair)!==kid && (n(FORM.kidsChair)||kid)) w.push('確認單兒童椅 '+n(FORM.kidsChair)+' 張，座位表標記 '+kid+' 張');
+    if (hidden) w.push('有 '+hidden+' 位姓名在目前配置未顯示（切換配置前的端座或右側桌）');
+    $('warn').textContent = w.length ? '⚠️ '+w.join('；') : '';
+  }
+
+  // ── 輸入（事件委派）──
+  var composing=false;
+  var room=$('room');
+  room.addEventListener('compositionstart',function(){composing=true;});
+  room.addEventListener('compositionend',function(){composing=false;});
+  room.addEventListener('focusout',function(e){
+    var el=e.target; if(!el.dataset||el.dataset.k===undefined||composing) return;
+    var s=state.tables[el.dataset.k].seats[+el.dataset.i];
+    s.name=el.value.trim(); el.value=s.name;
+    if(!s.name){s.veg=s.kid=s.help=false;}
+    el.className=cls(s); updateStat(); scheduleSave();
+  });
+  room.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!composing&&e.target.dataset.k!==undefined) e.target.blur(); });
+  room.addEventListener('click',function(e){
+    var b=e.target.closest('[data-label]'); if(!b) return;
+    editing=b.dataset.label; $('nameInput').value=state.tables[editing].label; $('mask').classList.add('show'); $('nameInput').focus();
+  });
+  room.addEventListener('contextmenu',function(e){
+    var el=e.target; if(el.dataset.k===undefined) return;
+    e.preventDefault(); showTag(e.clientX,e.clientY,el);
+  });
+  var pt=null;
+  room.addEventListener('touchstart',function(e){
+    var el=e.target; if(el.dataset.k===undefined) return;
+    var t=e.touches[0]; pt=setTimeout(function(){ showTag(t.clientX,t.clientY,el); },600);
+  },{passive:true});
+  ['touchend','touchmove'].forEach(function(ev){ room.addEventListener(ev,function(){clearTimeout(pt);},{passive:true}); });
+
+  function showTag(x,y,el){
+    var old=$('tagMenu'); if(old) old.remove();
+    var s=state.tables[el.dataset.k].seats[+el.dataset.i];
+    if(el.value.trim()!==s.name){ s.name=el.value.trim(); }
+    var menu=document.createElement('div'); menu.id='tagMenu';
+    menu.style.cssText='position:fixed;z-index:200;background:#fff;border:1px solid #ddd;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;box-shadow:0 4px 16px rgba(0,0,0,.15);min-width:110px';
+    menu.style.left=Math.min(x,innerWidth-130)+'px'; menu.style.top=Math.min(y,innerHeight-170)+'px';
+    function item(label,on,fn,color){
+      var b=document.createElement('button'); b.textContent=(on?'✓ ':'')+label;
+      if(color) b.style.color=color; if(on) b.style.background='#EEF5EA';
+      b.onclick=function(){ fn(); menu.remove(); el.value=s.name; el.className=cls(s); updateStat(); scheduleSave(); };
+      menu.appendChild(b);
+    }
+    item('素食 🌿',s.veg,function(){ s.veg=!s.veg; if(s.veg){s.kid=false;} });
+    item('兒童椅 🪑',s.kid,function(){ s.kid=!s.kid; if(s.kid){s.veg=false;} });
+    item('協助送餐 🍽️',s.help,function(){ s.help=!s.help; });
+    item('清除此座位',false,function(){ s.name='';s.veg=s.kid=s.help=false; },'#c0392b');
+    document.body.appendChild(menu);
+    setTimeout(function(){ document.addEventListener('click',function h(ev){ if(!menu.contains(ev.target)){ menu.remove(); document.removeEventListener('click',h);} }); },10);
+  }
+
+  // ── 桌名彈窗 ──
+  var editing=null;
+  function closeSheet(){ $('mask').classList.remove('show'); editing=null; }
+  $('okBtn').onclick=function(){ var v=$('nameInput').value.trim(); if(v&&editing){ state.tables[editing].label=v; render(); scheduleSave(); } closeSheet(); };
+  $('cancelBtn').onclick=closeSheet;
+  $('mask').onclick=function(e){ if(e.target===$('mask')) closeSheet(); };
+  $('nameInput').onkeydown=function(e){ if(e.key==='Enter') $('okBtn').onclick(); };
+
+  // ── 工具列 ──
+  $('layoutSel').onchange=function(){
+    if(LAYOUT_LOCKED){ alert('場地配置已依確認單決定，如需更改請回到確認單修改人數或背板位置。'); this.value=state.layout; return; }
+    state.layout=this.value; render(); scheduleSave();
+  };
+  $('clearBtn').onclick=function(){
+    if(!confirm('清除所有座位姓名及標記？')) return;
+    Object.keys(state.tables).forEach(function(k){ state.tables[k].seats.forEach(function(s){ s.name='';s.veg=s.kid=s.help=false; }); });
+    render(); scheduleSave();
+  };
+  $('printBtn').onclick=function(){
+    var ep=document.querySelector('input[name="ep"]:checked');
+    document.body.classList.toggle('place-empty', ep && ep.value==='yes');
+    if(document.activeElement) document.activeElement.blur();
+    setTimeout(function(){ window.print(); },50);
+  };
+
+  // ── 儲存 ──
+  function setStatus(c,msg){ var el=$('saveStatus'); el.className='save-status '+c; el.textContent=msg; }
+  function hm(){ var d=new Date(); return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0'); }
+  var timer=null;
+  function scheduleSave(){ if(!TOKEN) return; clearTimeout(timer); timer=setTimeout(doSave,1200); }
+  function doSave(){
+    setStatus('saving','儲存中…');
+    var str=JSON.stringify(state);
+    var url=BASE_URL+'?action=saveSeatData&token='+encodeURIComponent(TOKEN)+'&seat='+encodeURIComponent(str);
+    var p = url.length<=2000 ? fetch(url)
+      : fetch(BASE_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({token:TOKEN,action:'saveSeatData',seat:state})});
+    p.then(function(){ setStatus('saved','✓ 已儲存 '+hm()); }).catch(function(e){ setStatus('error','儲存失敗：'+e.message); });
+  }
+
+  // ── 載入 ──
+  function layoutFromForm(f){
+    if(f.layoutType==='58') return '58';
+    if(f.layoutType==='36') return f.backdropPos==='背板在入口處' ? '36e' : '36c';
+    return null;
+  }
+  function mergeSaved(saved){
+    if(!saved || !saved.tables || Array.isArray(saved.tables)) return;
+    if(saved.layout) state.layout=saved.layout;
+    Object.keys(state.tables).forEach(function(k){
+      var st=saved.tables[k]; if(!st) return;
+      if(st.label) state.tables[k].label=st.label;
+      (st.seats||[]).forEach(function(s,i){ if(state.tables[k].seats[i]) state.tables[k].seats[i]={name:s.name||'',veg:!!s.veg,kid:!!s.kid,help:!!s.help}; });
+    });
+  }
+
+  render();
+  if(TOKEN){
+    setStatus('saving','載入中…');
+    fetch(BASE_URL+'?token='+encodeURIComponent(TOKEN)+'&action=getSeatData')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d && d.order){
+          $('hdDate').textContent=(d.order.weddingDate||'')+'　'+(d.order.mealSession||'');
+          $('hdNames').textContent=(d.order.groomName||'')+' & '+(d.order.brideName||'');
+          document.title=(d.order.weddingDate||'')+'｜希爾頓逸林｜'+(d.order.groomName||'')+' & '+(d.order.brideName||'')+'｜座位表';
+        }
+        mergeSaved(d && d.seat);
+        FORM=(d && d.form)||{};
+        var fl=layoutFromForm(FORM);
+        if(fl){ state.layout=fl; LAYOUT_LOCKED=true; $('layoutSel').disabled=true; $('layoutSel').title='依確認單決定'; }
+        render();
+        setStatus('saved', d && d.seat ? '✓ 已載入上次儲存資料' : '');
+      })
+      .catch(function(e){ setStatus('error','載入失敗：'+e.message); });
+  }
+})();
+</script>
+</body>
+</html>
