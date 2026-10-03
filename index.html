@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 檔案：seating_doubletree.html｜版本：2026-10-04 -->
+<!-- 檔案：seating_doubletree.html｜版本：2026-10-04b -->
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
@@ -110,15 +110,14 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
   <label><input type="radio" name="ep" value="yes"> 擺</label>
   <label><input type="radio" name="ep" value="no" checked> 不擺</label>
 </div>
-<div class="stat">座位 <b id="sCap">0</b> 位（含新人 2 位）　已排 <b id="sSeated">0</b>　空 <b id="sEmpty">0</b>　素 <b id="sVeg">0</b>　兒童椅 <b id="sKid">0</b>　協助送餐 <b id="sHelp">0</b><span id="sMainWrap" style="display:none">　<span class="mA">主餐A</span> <b id="sSteak">0</b>　<span class="mB">主餐B</span> <b id="sPork">0</b></span></div>
+<div class="stat">座位 <b id="sCap">0</b> 位（含新人 2 位）　已排 <b id="sSeated">0</b>　空 <b id="sEmpty">0</b>　素 <b id="sVeg">0</b>　兒童椅 <b id="sKid">0</b><span id="sMainWrap" style="display:none">　<span class="mA">主餐A</span> <b id="sSteak">0</b>　<span class="mB">主餐B</span> <b id="sPork">0</b></span></div>
 <div class="warn" id="warn"></div>
-<div class="hint">📝 點座位格直接輸入姓名 · <b>右鍵（手機長按）</b>標記素食🌿／兒童椅🪑／協助送餐🍽️ · 點<b>桌名</b>可修改</div>
+<div class="hint">📝 點座位格直接輸入姓名 · <b>右鍵（手機長按）</b>標記素食🌿／兒童椅🪑 · 點<b>桌名</b>可修改</div>
 <div class="legend">
   <div class="leg"><div class="leg-box" style="background:#E8E2D9;border-color:#999"></div>已填</div>
   <div class="leg"><div class="leg-box" style="background:#D4EDCC;border-color:#5a9a4a"></div>素食</div>
   <div class="leg"><div class="leg-box" style="background:#FCE8CF;border-color:#c08040"></div>兒童椅</div>
-  <div class="leg"><div class="leg-box" style="background:#E8E0F5;border-color:#9a70cc"></div>協助送餐</div>
-  <div class="leg semi-only" style="display:none"><div class="leg-box" style="box-shadow:inset 6px 0 0 #9D380E"></div>主餐：<span class="mA">主餐A</span></div>
+    <div class="leg semi-only" style="display:none"><div class="leg-box" style="box-shadow:inset 6px 0 0 #9D380E"></div>主餐：<span class="mA">主餐A</span></div>
   <div class="leg semi-only" style="display:none"><div class="leg-box" style="box-shadow:inset 6px 0 0 #6BA1C7"></div>主餐：<span class="mB">主餐B</span></div>
 </div>
 
@@ -156,7 +155,7 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
 
   function $(id){ return document.getElementById(id); }
   function esc(s){ return String(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-  function cls(s){ return 'seat'+(!s.name ? '' : s.veg?' veg':s.kid?' kid':s.help?' help':' filled')+(s.name&&SEMI&&s.main==='S'?' main-s':s.name&&SEMI&&s.main==='P'?' main-p':''); }
+  function cls(s){ return 'seat'+(!s.name ? '' : s.veg?' veg':s.kid?' kid':' filled')+(s.name&&SEMI&&s.main==='S'?' main-s':s.name&&SEMI&&s.main==='P'?' main-p':''); }
   function is36(){ return state.layout !== '58'; }
   function visible(key){ return key==='M'||key==='L1'||key==='L2'||!is36(); }
   function seatCountOf(key){ var t=state.tables[key]; if(key==='L1'||key==='L2') return is36()?17:16; return t.seats.length; }
@@ -215,7 +214,7 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
       });
     });
     $('sCap').textContent=cap; $('sSeated').textContent=seated; $('sEmpty').textContent=cap-seated;
-    $('sVeg').textContent=veg; $('sKid').textContent=kid; $('sHelp').textContent=help;
+    $('sVeg').textContent=veg; $('sKid').textContent=kid;
     $('sMainWrap').style.display=SEMI?'':'none'; $('sSteak').textContent=steak; $('sPork').textContent=pork;
     document.querySelectorAll('.semi-only').forEach(function(e){ e.style.display=SEMI?'':'none'; });
     var w = [];
@@ -279,7 +278,6 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
     }
     item('素食 🌿',s.veg,function(){ s.veg=!s.veg; if(s.veg){s.kid=false;s.main='';} });
     item('兒童椅 🪑',s.kid,function(){ s.kid=!s.kid; if(s.kid){s.veg=false;} });
-    item('協助送餐 🍽️',s.help,function(){ s.help=!s.help; });
     item('清除此座位',false,function(){ s.name='';s.veg=s.kid=s.help=false;s.main=''; },'#c0392b');
     document.body.appendChild(menu);
     setTimeout(function(){ document.addEventListener('click',function h(ev){ if(!menu.contains(ev.target)){ menu.remove(); document.removeEventListener('click',h);} }); },10);
