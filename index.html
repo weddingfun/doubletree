@@ -312,15 +312,94 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
   function setStatus(c,msg){ var el=$('saveStatus'); el.className='save-status '+c; el.textContent=msg; }
   function hm(){ var d=new Date(); return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0'); }
   var timer=null;
-  function scheduleSave(){ if(!TOKEN) return; clearTimeout(timer); timer=setTimeout(doSave,1200); }
-  function doSave(){
-    setStatus('saving','儲存中…');
-    var str=JSON.stringify(state);
-    var url=BASE_URL+'?action=saveSeatData&token='+encodeURIComponent(TOKEN)+'&seat='+encodeURIComponent(str);
-    var p = url.length<=2000 ? fetch(url)
-      : fetch(BASE_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({token:TOKEN,action:'saveSeatData',seat:state})});
-    p.then(function(){ setStatus('saved','✓ 已儲存 '+hm()); }).catch(function(e){ setStatus('error','儲存失敗：'+e.message); });
+  var LOADED=false;
+  function scheduleSave(){ if(!TOKEN||!LOADED) return; clearTimeout(timer); timer=setTimeout(doSave,1200); }
+  function syGet(){ return JSON.parse(JSON.stringify(state)); }
+  function sySet(seat){ var lay=state.layout; mergeSaved(seat); if(LAYOUT_LOCKED) state.layout=lay; render(); }
+  // ── 多人同步（通用）：每 6 秒抓雲端最新版合併到畫面；存檔時送出「打開時的版本＋我的版本」，由伺服器鎖定後合併，只寫入我改過的位子 ──
+  var SY_BASE = null, SY_SAVING = false;
+  function syFlat(o, p, m) {
+    m = m || {};
+    if (Array.isArray(o)) { m[p + '@a'] = String(o.length); o.forEach(function(v, i){ syFlat(v, p + '.' + i, m); }); }
+    else if (o && typeof o === 'object') { m[p + '@o'] = '1'; Object.keys(o).forEach(function(k){ syFlat(o[k], p + '.' + k, m); }); }
+    else m[p] = JSON.stringify(o === undefined ? null : o);
+    return m;
   }
+  function syUnflat(m) {
+    var kids = {};
+    Object.keys(m).forEach(function(k){
+      var base = k.replace(/@[ao]$/, ''), i = base.lastIndexOf('.');
+      if (i < 0 && base === '') return;
+      var parent = base.slice(0, i), seg = base.slice(i + 1);
+      (kids[parent] = kids[parent] || {})[seg] = 1;
+    });
+    function build(p) {
+      if (m[p + '@a'] !== undefined) { var n = +m[p + '@a'], a = []; for (var i = 0; i < n; i++) a.push(has(p + '.' + i) ? build(p + '.' + i) : null); return a; }
+      if (m[p + '@o'] !== undefined) { var o = {}; Object.keys(kids[p] || {}).forEach(function(s){ if (has(p + '.' + s)) o[s] = build(p + '.' + s); }); return o; }
+      return m[p] !== undefined ? JSON.parse(m[p]) : null;
+    }
+    function has(q) { return m[q] !== undefined || m[q + '@a'] !== undefined || m[q + '@o'] !== undefined; }
+    return build('');
+  }
+  function syMerge(base, mine, theirs) {
+    var b = syFlat(base, ''), l = syFlat(mine, ''), r = syFlat(theirs, ''), out = {}, keys = {}, conf = [];
+    [b, l, r].forEach(function(o){ Object.keys(o).forEach(function(k){ keys[k] = 1; }); });
+    Object.keys(keys).forEach(function(k){
+      var bv = b[k], lv = l[k], rv = r[k];
+      if (lv === bv) { if (rv !== undefined) out[k] = rv; }
+      else if (rv === bv || rv === lv) { if (lv !== undefined) out[k] = lv; }
+      else { conf.push(k); if (lv !== undefined) out[k] = lv; out['__t' + k] = rv; }
+    });
+    var named = conf.filter(function(k){ return /\.name$/.test(k); });
+    if (named.length && !confirm('另一位剛好也改了同樣的位子（' + named.length + ' 處），例如：\n「' + JSON.parse(l[named[0]] || 'null') + '」／對方「' + JSON.parse(r[named[0]] || 'null') + '」\n\n按「確定」保留你的版本，按「取消」改用對方的版本。')) {
+      conf.forEach(function(k){ if (out['__t' + k] !== undefined) out[k] = out['__t' + k]; else delete out[k]; });
+    }
+    Object.keys(out).forEach(function(k){ if (k.indexOf('__t') === 0) delete out[k]; });
+    return syUnflat(out);
+  }
+  function syFetch() {
+    return fetch(BASE_URL + '?token=' + encodeURIComponent(TOKEN) + '&action=getSeatData&_=' + Date.now())
+      .then(function(r){ return r.json(); }).then(function(d){ return (d && d.seat) || null; });
+  }
+  function sySync(remote) {
+    if (!remote) return false;
+    var rs = JSON.stringify(remote);
+    if (SY_BASE === null || rs === SY_BASE) return false;
+    var mine = syGet(), merged = syMerge(JSON.parse(SY_BASE), mine, remote);
+    SY_BASE = rs;
+    if (JSON.stringify(merged) === JSON.stringify(mine)) return false;
+    sySet(merged);
+    setStatus('saved', '↻ 已同步另一位的修改 ' + new Date().getHours() + ':' + String(new Date().getMinutes()).padStart(2, '0'));
+    return true;
+  }
+  function doSave() {
+    timer = null;
+    if (!TOKEN || !LOADED) return;
+    if (SY_SAVING) { scheduleSave(); return; }
+    var payload = syGet(), str = JSON.stringify(payload);
+    if (str === SY_BASE) { setStatus('saved', '✓ 已儲存'); return; }
+    SY_SAVING = true;
+    setStatus('saving', '儲存中…');
+    fetch(BASE_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'saveSeatData', seat: payload, base: SY_BASE ? JSON.parse(SY_BASE) : null }) })
+      .then(function(){ return syFetch(); })
+      .then(function(remote){ SY_BASE = str; sySync(remote); SY_SAVING = false; setStatus('saved', '✓ 已儲存 ' + new Date().getHours() + ':' + String(new Date().getMinutes()).padStart(2, '0')); })
+      .catch(function(e){ SY_SAVING = false; setStatus('error', '儲存失敗：' + e.message + '（稍後會自動重試）'); setTimeout(scheduleSave, 8000); });
+  }
+  function syBusy() {
+    var a = document.activeElement;
+    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && a.type !== 'radio' && a.type !== 'checkbox') return true;
+    if (document.getElementById('tagMenu')) return true;
+    var mk = document.getElementById('mask'); if (mk && mk.classList.contains('show')) return true;
+    return false;
+  }
+  function syPoll() {
+    if (!TOKEN || !LOADED || SY_SAVING || timer || document.hidden || syBusy()) return;
+    syFetch().then(function(remote){ if (!SY_SAVING && !timer && !syBusy()) sySync(remote); }).catch(function(){});
+  }
+  setInterval(syPoll, 6000);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) syPoll(); });
+  window.addEventListener('focus', syPoll);
+
 
   // ── 載入 ──
   function layoutFromForm(f){
@@ -359,6 +438,8 @@ body{font-family:-apple-system,"PingFang TC","Helvetica Neue",sans-serif;backgro
         if(fl){ state.layout=fl; LAYOUT_LOCKED=true; $('layoutSel').disabled=true; $('layoutSel').title='依確認單決定'; }
         render();
         setStatus('saved', d && d.seat ? '✓ 已載入上次儲存資料' : '');
+        LOADED=true;
+        SY_BASE=JSON.stringify(d && d.seat && d.seat.tables ? d.seat : syGet());
       })
       .catch(function(e){ setStatus('error','載入失敗：'+e.message); });
   }
